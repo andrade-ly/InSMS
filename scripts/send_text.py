@@ -44,6 +44,26 @@ def send_sms_message(
     else:
         return response['MessageResponse']['Result'][destination_number]['MessageId']
 
+def reminder_text(reminder_list):
+    environment = Environment(loader=FileSystemLoader("templates/"))
+    template = environment.get_template("surveyReminder.txt")
+
+    app_id = ""
+    origination_number = ""
+    
+
+    message_type = "TRANSACTIONAL"
+
+    for participant in reminder_list:
+        message = template.render(survey_link=participant["survey_link"])
+        destination_number = participant['phone_number'] #participant.phoneNumber
+        print("Sending SMS message.")
+        message_id = send_sms_message(
+            boto3.client('pinpoint'), app_id, origination_number, destination_number,
+            message, message_type)
+        print(f"Message sent! Message ID: {message_id}.")
+
+        #TODO Update DB survey_sent = TR
 
 def main():
     environment = Environment(loader=FileSystemLoader("templates/"))
