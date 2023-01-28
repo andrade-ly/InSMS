@@ -1,0 +1,2 @@
+{# templates/message.txt #}
+Today's survey link: {{ survey_link }}

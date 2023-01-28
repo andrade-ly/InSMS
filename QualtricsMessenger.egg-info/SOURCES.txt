@@ -1,0 +1,6 @@
+setup.py
+QualtricsMessenger.egg-info/PKG-INFO
+QualtricsMessenger.egg-info/SOURCES.txt
+QualtricsMessenger.egg-info/dependency_links.txt
+QualtricsMessenger.egg-info/top_level.txt
+scripts/test.py
