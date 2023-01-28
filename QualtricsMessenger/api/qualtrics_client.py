@@ -20,10 +20,14 @@ class Client:
             "x-api-token": self.api_token,
             }
 
+        response = requests.get(baseUrl, headers=headers).json()
 
-        response = requests.get(baseUrl, headers=headers)
+        results = response['result']['elements']
+        while response['result']['nextPage']:           
+            response = requests.get(response['result']['nextPage'], headers=headers).json()
+            results.extend(response['result']['elements'])
 
-        return response.json()
+        return results
 
     def create_survey_links(self, survey_id, mailinglist_id, expiration_date, description):
         baseUrl = f"{self.url}/distributions"
@@ -42,11 +46,9 @@ class Client:
             "mailingListId": mailinglist_id
         }
 
-        response = requests.post(baseUrl, headers=headers, json=post_data)
+        response = requests.post(baseUrl, headers=headers, json=post_data).json()
 
-        print(response.json())
-
-        return response.json()
+        return response['result']['id']
     
     def get_contact_survey_links(self, distribution_id, survey_id):
         baseUrl = f"{self.url}/distributions/{distribution_id}/links?surveyId={survey_id}"
@@ -55,8 +57,57 @@ class Client:
             "x-api-token": self.api_token,
             }
 
-        response = requests.get(baseUrl, headers=headers)
+        response = requests.get(baseUrl, headers=headers).json()
+        
+        results = response['result']['elements']
+        while response['result']['nextPage']:           
+            response = requests.get(response['result']['nextPage'], headers=headers).json()
+            results.extend(response['result']['elements'])
 
-        pprint(response.json())
+        return results
 
-        return response.json()
+    def get_distribution_history(self, distribution_id):
+        """
+        Returns 
+        {
+            "result": {
+                "elements": [
+                    {
+                        "contactId": "CID_3yJ86kfnM89U1Vk",
+                        "contactLookupId": "CGC_jsMDpDZo38Q6HOx",
+                        "distributionId": "EMD_q49DwTeL57FFPCj",
+                        "status": "Pending",
+                        "surveyLink": "https://duke.qualtrics.com/jfe/form/SV_77ozMThNJWlmyay?Q_CHL=gl&Q_DL=EMD_q49DwTeL57FFPCj_77ozMThNJWlmyay_CGC_jsMDpDZo38Q6HOx&_g_=g",
+                        "contactFrequencyRuleId": null,
+                        "responseId": null,
+                        "responseCompletedAt": null,
+                        "sentAt": "2023-01-12T03:18:49.180Z",
+                        "openedAt": null,
+                        "responseStartedAt": null,
+                        "surveySessionId": null
+                    }
+                ],
+                "nextPage": null
+            },
+            "meta": {
+                "requestId": "a396740d-59ba-4d69-ab4c-0bdd47110b2a",
+                "httpStatus": "200 - OK"
+            }
+        }
+        """
+        if distribution_id is None:
+            raise Exception("distribution_id is expected")
+        baseUrl = f"{self.url}/distributions/{distribution_id}/history"
+
+        headers = {
+            "x-api-token": self.api_token,
+            }
+
+        response = requests.get(baseUrl, headers=headers).json()
+
+        results = response['result']['elements']
+        while response['result']['nextPage']:           
+            response = requests.get(response['result']['nextPage'], headers=headers).json()
+            results.extend(response['result']['elements'])
+
+        return results
