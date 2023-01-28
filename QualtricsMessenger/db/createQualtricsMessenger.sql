@@ -8,19 +8,19 @@ SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
 -- -----------------------------------------------------
--- Schema mydb
+-- Schema qualtrics-messenger
 -- -----------------------------------------------------
 
 -- -----------------------------------------------------
--- Schema mydb
+-- Schema qualtrics-messenger
 -- -----------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS `mydb` DEFAULT CHARACTER SET utf8 ;
-USE `mydb` ;
+CREATE SCHEMA IF NOT EXISTS `qualtrics-messenger` DEFAULT CHARACTER SET utf8 ;
+USE `qualtrics-messenger` ;
 
 -- -----------------------------------------------------
--- Table `mydb`.`distribution`
+-- Table `qualtrics-messenger`.`distribution`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`distribution` (
+CREATE TABLE IF NOT EXISTS `qualtrics-messenger`.`distribution` (
   `id` VARCHAR(14) NOT NULL,
   `expirationDate` DATE NULL,
   `mailingListId` VARCHAR(45) NULL,
@@ -31,9 +31,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `mydb`.`participant`
+-- Table `qualtrics-messenger`.`participant`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`participant` (
+CREATE TABLE IF NOT EXISTS `qualtrics-messenger`.`participant` (
   `contactId` VARCHAR(20) NOT NULL,
   `email` VARCHAR(128) NOT NULL,
   `phone_number` VARCHAR(16) NOT NULL,
@@ -42,9 +42,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `mydb`.`distribution_list`
+-- Table `qualtrics-messenger`.`distribution_list`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`distribution_list` (
+CREATE TABLE IF NOT EXISTS `qualtrics-messenger`.`distribution_list` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `distributionId` VARCHAR(14) NOT NULL,
   `participantId` VARCHAR(20) NOT NULL,
@@ -57,12 +57,12 @@ CREATE TABLE IF NOT EXISTS `mydb`.`distribution_list` (
   INDEX `fk_distribution_list_participant1_idx` (`participantId` ASC) VISIBLE,
   CONSTRAINT `fk_distribution_list_distributions`
     FOREIGN KEY (`distributionId`)
-    REFERENCES `mydb`.`distribution` (`id`)
+    REFERENCES `qualtrics-messenger`.`distribution` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_distribution_list_participant1`
     FOREIGN KEY (`participantId`)
-    REFERENCES `mydb`.`participant` (`contactId`)
+    REFERENCES `qualtrics-messenger`.`participant` (`contactId`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
