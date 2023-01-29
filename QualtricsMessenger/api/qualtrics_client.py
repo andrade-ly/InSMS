@@ -20,8 +20,12 @@ class Client:
             "x-api-token": self.api_token,
             }
 
-        response = requests.get(baseUrl, headers=headers).json()
+        res = requests.get(baseUrl, headers=headers)
 
+        if not res.ok:
+            raise Exception(res.raise_for_status())
+        
+        response = res.json()
         results = response['result']['elements']
         while response['result']['nextPage']:           
             response = requests.get(response['result']['nextPage'], headers=headers).json()
@@ -30,6 +34,18 @@ class Client:
         return results
 
     def create_survey_links(self, survey_id, mailinglist_id, expiration_date, description):
+        if survey_id is None:
+            raise Exception("Must have survey_id")
+    
+        if mailinglist_id is None:
+            raise Exception("Must have mailinglist_id")
+        
+        if expiration_date is None:
+            raise Exception("Must have expiration_date")
+        
+        if description is None:
+            raise Exception("Must have description")
+        
         baseUrl = f"{self.url}/distributions"
 
         headers = {
