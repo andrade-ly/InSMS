@@ -1,41 +1,29 @@
 """ Script to generate personal survey links for a mailing list.
-
 """
 
 from QualtricsMessenger.api.qualtrics_client import Client
 from pprint import pprint
 from time import sleep
-# def generate_survey_links (client, survey_id, mailing_list_id, expiration_date, description):
-#     if survey_id is None:
-#         raise Exception("Must have survey_id")
-    
-#     if mailing_list_id is None:
-#         raise Exception("Must have mailing_list_id")
-    
-#     if expiration_date is None:
-#         raise Exception("Must have expiration_date")
-    
-#     if description is None:
-#         raise Exception("Must have description")
+import pymysql
+import queries
+from dotenv import load_dotenv, dotenv_values
+from os import environ, getenv
 
-    
+def generate_survey_links (client, survey_id, mailing_list_id, expiration_date, description):
+    response = c.create_survey_links(survey_id, mailing_list_id, expiration_date, description)
 
-def create_survey_links(c, token):
-    # participants = c.getParticipants(mailinglist_id="CG_UfKFyE4EYCZRvzz")
-    response = c.create_survey_links("SV_77ozMThNJWlmyay", "CG_UfKFyE4EYCZRvzz", "2023-01-20 20:00:00", "lifestyles week 1 monda")
-
-    return response["result"]["id"]
+    return response
 
 def update_distribution_list(c, token, distribution_id):
     response = c.get_contact_survey_links(distribution_id, "SV_77ozMThNJWlmyay")
 
     survey_list = []
-    for element in response['result']['elements']:
+    for element in response:
         vals = {
             'contact_id': element["contactId"],
             'distribution_id': distribution_id,
             "survey_link": element["link"],
-            'survey_status': 'not_sent',
+            'survey_status': 'NotSent',
             'survey_delivered': False,
         }
 
@@ -44,18 +32,33 @@ def update_distribution_list(c, token, distribution_id):
     return survey_list
 
 if __name__ == '__main__':
-    token = ""
+    config = dotenv_values(".env")
+    token = config["Q_TOKEN"]
+    mailing_list_id = config["MAILING_LIST_ID"]
 
+    # Connect to the database
+    connection = queries.get_connection()
+
+    # Create client for qualtrics API
     c = Client(api_token=token)
 
-    distribution_id = create_survey_links(c, token)
+    # Get participants for the mailing ID and update database
+    participants = c.get_participants(mailing_list_id)
+    queries.insert_participants(connection, participants)
 
-    print(distribution_id)
-    sleep(5)
+    # Create
+    survey_id = config["SURVEY_ID"]
+    expiration_date = "2023-02-20 20:00:00"
+    description = "lifestyles week 1 monday"
+    distribution_id = c.create_survey_links(survey_id, mailing_list_id, expiration_date, description)
+
+    queries.insert_distribution(connection, distribution_id, expiration_date, mailing_list_id, description, survey_id)
+    sleep(2)
+
     distribution_list = update_distribution_list(c, token, distribution_id)
 
-    #TODO Update DB
+    queries.insert_distribution_list_many(connection, distribution_id, expiration_date, distribution_list)
 
-    # Create message
+
 
     

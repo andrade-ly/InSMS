@@ -1,23 +1,41 @@
-import pymysql
+import pymysql as pms
+from datetime import datetime, timedelta
 
-def insert_participant(conn, participant_list):
+from dotenv import load_dotenv, dotenv_values
+from os import environ, getenv
+
+def get_connection():
+    config = dotenv_values(".env")
+    token = config["Q_TOKEN"]
+    mailing_list_id = config["MAILING_LIST_ID"]
+
+    # Connect to the database
+    connection = pms.connect(host=config["DB_HOST"],
+                                user=config["DB_USER"],
+                                password=config["DB_PASS"],
+                                database=config["DB_SCHEMA"],
+                                charset='utf8mb4',
+                                cursorclass=pms.cursors.DictCursor)
+
+    return connection
+
+def insert_participants(conn, participant_list):
     """
     Insert a list of participants where the elements are dict of:
         {
-            contact_id: "",
+            contactId: "",
             email: "",
-            phone_number: ""
+            phone: ""
         }
     """
 
     query = """
-        INSERT INTO participant (contactId, email, phone_number) values(%s, %s, %s)
+        INSERT INTO participant (contactId, email, phone_number) values(%s, %s, %s) ON DUPLICATE KEY UPDATE contactId=contactId
     """
 
+    inputs = [(participant['contactId'], participant['email'], participant['phone']) for participant in participant_list]
     with conn.cursor() as cur:
-        for participant in participant_list:
-            inputs = (participant['contact_id'], participant['email'], participant['phone_number'])
-            cur.execute(query, inputs)
+        cur.executemany(query, inputs)
         conn.commit()
 
 def insert_distribution(conn, distribution_id, expiration_date, mailing_list, description, survey_id):
@@ -32,26 +50,27 @@ def insert_distribution(conn, distribution_id, expiration_date, mailing_list, de
         cur.execute(query, inputs)
         conn.commit()
 
-def insert_distribution_list(conn, distribution_id, expiration_date, distribution_list):
-
+def insert_distribution_list_many(conn, distribution_id, expiration_date, distribution_list):
     query = """
         INSERT INTO distribution_list
         (distributionId, participantId, surveyLink, surveyStatus, surveyDelivered, linkExpiration)
         VALUES (%s, %s, %s, %s, %s, %s)
     """
 
-    with conn.cursor() as cur:
-        for gen_link in distribution_list:
-            inputs = (
-                distribution_id, 
-                gen_link["contactId"], 
-                gen_link['surveyLink'],
-                'NotStarted',
-                False,
-                expiration_date
-            )
+    inputs = [
+        (
+            distribution_id, 
+            distribution["contact_id"], 
+            distribution['survey_link'],
+            distribution['survey_status'],
+            distribution['survey_delivered'],
+            expiration_date
+        ) 
+        for distribution in distribution_list
+    ]
 
-            cur.execute(query, inputs)
+    with conn.cursor() as cur:
+        cur.executemany(query, inputs)
         conn.commit()
 
 def update_survey_delivered(conn, delivered, distribution_id, contact_id):
@@ -79,11 +98,56 @@ def update_survey_status(conn, survey_status, distribution_id, contact_id):
         cur.execute(query, inputs)
         conn.commit()
 
-def get_distribution_by_date(conn, date):
-    pass
+def get_distribution_by_date(conn, start_date, end_date):
+    query = "select * from distribution where expirationDate >= %s and expirationDate <= %s;" 
+    
+    inputs = (start_date, end_date)
 
-def get_distribution_by_id(conn, date):
-    pass
+    results = []
+    with conn.cursor() as cur:
+        cur.execute(query, inputs)
 
-def get_distribution_list_by_contact_id(conn, contact_id):
-    pass
+        results = cur.fetchAll()
+
+    return results
+
+def get_distribution_by_id(conn, distribution_id):
+    query = "select * from distribution where id = %s;" 
+    
+    inputs = (distribution_id)
+
+    results = []
+    with conn.cursor() as cur:
+        cur.execute(query, inputs)
+
+        results = cur.fetchAll()
+
+    return results
+
+def get_distribution_list_by_distribution_id(conn, distribution_id):
+    query = "select * from distribution_list where distributionId = %s;" 
+    
+    inputs = (distribution_id)
+
+    results = []
+    with conn.cursor() as cur:
+        cur.execute(query, inputs)
+
+        results = cur.fetchAll()
+
+    return results
+
+def get_participants_survey_by_date(conn, expiration_date):
+    query = """SELECT p.phone_number, d.surveyLink
+    FROM distribution_list as d, participant as p 
+    WHERE d.participantId = p.contactId  
+    AND d.linkExpiration >= %s AND d.linkExpiration <= %s;""" 
+    
+    inputs = (expiration_date, expiration_date + timedelta(days=1))
+
+    with conn.cursor() as cur:
+        cur.execute(query, inputs)
+
+        results = cur.fetchall()
+
+    return results

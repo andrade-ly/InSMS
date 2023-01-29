@@ -3,6 +3,9 @@ import logging
 import boto3
 from jinja2 import Environment, FileSystemLoader
 
+from datetime import datetime
+import queries
+
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
@@ -74,6 +77,11 @@ def main():
     destination_number = "" #participant.phoneNumber
 
     message_type = "TRANSACTIONAL"
+
+    conn = queries.get_connection()
+
+    distribution_list = queries.get_participants_survey_by_date(conn, datetime.today())
+    
 
     for participant in distribution_list:
         message = template.render(survey_link=participant["survey_link"])
