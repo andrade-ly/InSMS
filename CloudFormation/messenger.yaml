@@ -73,47 +73,120 @@ Resources:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: '10.0.0.0/16'
+      InstanceTenancy: "default"
 
-  PublicSubnet:
-    Type: AWS::EC2::Subnet
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
     Properties:
       VpcId: !Ref MyVPC
-      CidrBlock: '10.0.1.0/24'
-      MapPublicIpOnLaunch: true
+      InternetGatewayId: !Ref InternetGateway
 
-  PrivateSubnet1:
-    Type: AWS::EC2::Subnet
+  RouteTablePublic:
+    Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref MyVPC
-      CidrBlock: '10.0.2.0/24'
-      AvailabilityZone: "us-east-1a"
 
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
+  RoutePublic:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
     Properties:
-      VpcId: !Ref MyVPC
-      CidrBlock: '10.0.3.0/24'
-      AvailabilityZone: "us-east-1b"
+      RouteTableId: !Ref RouteTablePublic
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+
+  SubnetARouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref PublicSubnet
+
+  EIP:
+    Type: "AWS::EC2::EIP"
+    Properties:
+      Domain: "vpc"
+  
+  Nat:
+    Type: "AWS::EC2::NatGateway"
+    Properties:
+      AllocationId: !GetAtt "EIP.AllocationId"
+      SubnetId: !Ref "PublicSubnet"
+
+  NatRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref "MyVPC"
+
+  NatRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref "Nat"
+      RouteTableId: !Ref "NatRouteTable"
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref NatRouteTable
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref NatRouteTable
+      SubnetId: !Ref PrivateSubnet2
 
   LambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow outbound internet access for Lambda
+      GroupDescription: Enable internet access for Lambda function
       VpcId: !Ref MyVPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
-        - IpProtocol: '-1'
-          CidrIp: 0.0.0.0/0
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0 # Allow outbound HTTPS
 
   RDSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow inbound connections from Lambda
+      GroupDescription: Enable access to RDS
       VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !GetAtt LambdaSecurityGroup.GroupId # Allow inbound traffic from Lambda function
+
+  PublicSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select 
+        - 0
+        - !GetAZs 
+          Ref: 'AWS::Region'
+      VpcId: !Ref MyVPC
+      CidrBlock: "10.0.0.0/24"
+  
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select 
+        - 1
+        - !GetAZs 
+          Ref: 'AWS::Region'
+      VpcId: !Ref MyVPC
+      CidrBlock: "10.0.1.0/24"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select 
+        - 2
+        - !GetAZs 
+          Ref: 'AWS::Region'
+      VpcId: !Ref MyVPC
+      CidrBlock: "10.0.2.0/24"
 
   MyRDSSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -143,11 +216,12 @@ Resources:
           def handler(event, context):
             pass
       FunctionName: qm_lambda
-      Handler: qm_lambda.handler
+      Handler: index.handler
       Role: !GetAtt MyLambdaRole.Arn
       Runtime: python3.11
       VpcConfig:
         SecurityGroupIds:
           - !Ref LambdaSecurityGroup
         SubnetIds:
-          - !Ref PublicSubnet
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
