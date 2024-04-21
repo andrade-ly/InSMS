@@ -13,10 +13,7 @@ def update_distribution_email(connection, distribution_id, survey_id):
     from_zone = tz.gettz('UTC')
     to_zone = tz.gettz('America/New_York')
 
-    
-    token = environ["Q_TOKEN"]
-
-    c = Client(api_token=token)
+    c = Client()
 
     # Create personal links
     distribution_data = c.get_distribution_by_email(distribution_id, survey_id)
@@ -34,11 +31,10 @@ def update_distribution_email(connection, distribution_id, survey_id):
     return expiration_date
     
 def update_distribution_list(connection, distribution_id, expiration_date, survey_id):
-    token = environ["Q_TOKEN"]
     directory_id = environ["DIRECTORY_ID"]
 
     # Create client for qualtrics API
-    c = Client(api_token=token)
+    c = Client()
     
     print("getting surveys")
     response = c.get_contact_survey_links(distribution_id, survey_id)
@@ -65,11 +61,10 @@ def update_distribution_list(connection, distribution_id, expiration_date, surve
 
 
 def survey_check(connection):
-    token = environ["Q_TOKEN"]
     directory_id = environ["DIRECTORY_ID"]
 
     # Create client for qualtrics API
-    c = Client(api_token=token)
+    c = Client()
 
     today = datetime.today()
     tomorrow = today + timedelta(days=1)

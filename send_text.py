@@ -52,11 +52,10 @@ def send_sms_message(
         return response['MessageResponse']['Result'][destination_number]['DeliveryStatus']
 
 def reminder_check(connection):
-    token = environ["Q_TOKEN"]
     directory_id = environ["DIRECTORY_ID"]
 
     # Create client for qualtrics API
-    c = Client(api_token=token)
+    c = Client()
 
     today = date.today()
     tomorrow = today + timedelta(days=1)
@@ -135,9 +134,7 @@ def start_text(conn):
 
     message_type = "PROMOTIONAL"
 
-    token = environ["Q_TOKEN"]
-
-    c = Client(api_token=token)
+    c = Client()
 
     distribution_list = queries.get_distribution_list_by_expiration_date(conn, date.today())
 
@@ -181,9 +178,7 @@ def start_text_baseline(conn, expiration_date):
 
     message_type = "PROMOTIONAL"
 
-    token = environ["Q_TOKEN"]
-
-    c = Client(api_token=token)
+    c = Client()
 
     exp_datetime = datetime.strptime(expiration_date, '%m/%d/%Y')
 
@@ -219,11 +214,10 @@ def start_text_baseline(conn, expiration_date):
             continue
 
 def reminder_check_baseline(connection, expiration_date):
-    token = environ["Q_TOKEN"]
     directory_id = environ["DIRECTORY_ID"]
 
     # Create client for qualtrics API
-    c = Client(api_token=token)
+    c = Client()
 
     exp_datetime = datetime.strptime(expiration_date, '%m/%d/%Y')
     tomorrow = exp_datetime + timedelta(days=1)

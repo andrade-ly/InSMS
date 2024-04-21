@@ -9,15 +9,12 @@ import queries
 from os import environ
 
 def generate_survey_links (survey_id, survey_description, mailing_list_id, expiration_date):
-     # TODO: Pass in these values from lambda env
-    token = environ["Q_TOKEN"]
-
     # Connect to the database
     connection = queries.get_connection()
 
     print("connected to database")
     # Create client for qualtrics API
-    c = Client(api_token=token)
+    c = Client()
 
     print("Qualtrics client created")
     
