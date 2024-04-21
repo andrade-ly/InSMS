@@ -91,8 +91,8 @@ Resources:
                 Action:
                   - secretsmanager:GetSecretValue
                 Resource: 
-                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${DBPassword}"        
-                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${APIToken}"
+                  - !Ref DBPassword      
+                  - !Ref APIToken
   MyVPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -269,14 +269,14 @@ Resources:
           - !Ref PrivateSubnet2
       Environment:
         Variables:
-          DB_HOSTNAME:
+          DB_HOST:
             Fn::GetAtt: [ MyRDSInstance, Endpoint.Address ]
           DB_PORT: "3306"
           S3_BUCKET_NAME: !Ref MyS3Bucket
           DB_SCHEMA: "insms"
           DB_USER: "admin"
-          DB_SECRET_NAME: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${DBPassword}"
-          API_SECRET_NAME: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${APIToken}"
+          DB_SECRET_NAME: !Ref DBPassword
+          API_SECRET_NAME: !Ref APIToken
           QUALTRICS_CUSTOMER_NAME: !Ref QualtricsCustomerName
           ORIGINATION_NUMBER: !Ref PinPointNumber
           DIRECTORY_ID: !Ref QualtricsDirectoryId
