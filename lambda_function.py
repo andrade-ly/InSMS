@@ -47,6 +47,8 @@ def lambda_handler(event, context):
     elif event["action"] == "export":
         export_to_s3(c)
     elif event["action"] == "generate_schema":
+        if "are_you_sure" not in event.keys() or event["are_you_sure"] != "very_sure":
+            raise Exception('Regenrating the schema is a destructive action that will erase the database. If you are really sure, set another value in the test event for {"are_you_sure": "very_sure"}')
         queries.generate_schema_from_file(c, "./db/createInSMS.sql")
     else:
         print (f'Unknown command: {event["action"]}')

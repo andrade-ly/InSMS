@@ -24,9 +24,13 @@ def __get_db_password():
     sm_client = boto3.client("secretsmanager")
     secret_path = environ["DB_SECRET_NAME"]
 
-    password = sm_client.get_secret_value(SecretId=secret_path)
-
-    return password
+    print(f"Getting secret from {secret_path}")
+    
+    get_secret_value_response = sm_client.get_secret_value(SecretId=secret_path)
+    
+    json_response = json.loads(get_secret_value_response["SecretString"])
+    
+    return json_response["password"]
 
 def generate_schema_from_file(conn, file_path):
     # Read the SQL script file
