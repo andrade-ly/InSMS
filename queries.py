@@ -1,11 +1,11 @@
+import boto3
 import pymysql as pms
-from datetime import datetime, timedelta
 
+from datetime import datetime, timedelta
 from os import environ, getenv
 
 def get_connection():
-    token = environ["Q_TOKEN"]
-
+    password = __get_db_password()
     print("Connecting to database ", environ["DB_SCHEMA"])
     # Connect to the database
     connection = pms.connect(host=environ["DB_HOST"],
@@ -19,6 +19,14 @@ def get_connection():
     print("Connected.")
 
     return connection
+
+def __get_db_password():
+    sm_client = boto3.client("secretsmanager")
+    secret_path = environ["DB_SECRET_NAME"]
+
+    password = sm_client.get_secret_value(SecretId=secret_path)
+
+    return password
 
 def insert_distribution(conn, distribution_id, expiration_date, mailing_list, description, survey_id):
     
