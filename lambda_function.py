@@ -16,7 +16,7 @@ def lambda_handler(event, context):
     if event["action"] is None:
         print("Action not specified")
         return
-        
+    
     if event["action"] == "generate":
         for survey in event["surveys"]:
             print("Generating survey")
@@ -46,6 +46,8 @@ def lambda_handler(event, context):
             alt_flow.update_distribution_list(c, distribution["distribution_id"], expiration_date, distribution["survey_id"])
     elif event["action"] == "export":
         export_to_s3(c)
+    elif event["action"] == "generate_schema":
+        queries.generate_schema_from_file(c, "./db/createInSMS.sql")
     else:
         print (f'Unknown command: {event["action"]}')
     

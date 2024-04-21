@@ -28,6 +28,25 @@ def __get_db_password():
 
     return password
 
+def generate_schema_from_file(conn, file_path):
+    # Read the SQL script file
+    with open(file_path, 'r') as sql_file:
+        sql_script = sql_file.read()
+
+    # Split the script into individual SQL commands
+    sql_commands = sql_script.split(';')
+
+    # Execute each SQL command
+    cursor = connection.cursor()
+    for command in sql_commands:
+        try:
+            if command.strip():
+                cursor.execute(command)
+                print("Command executed successfully:", command)
+        except Exception as e:
+            print("Error executing command:", command)
+            print(e)
+
 def insert_distribution(conn, distribution_id, expiration_date, mailing_list, description, survey_id):
     
     query = """
