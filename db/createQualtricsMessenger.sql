@@ -1,8 +1,8 @@
-CREATE DATABASE  IF NOT EXISTS `qualtrics-messenger` /*!40100 DEFAULT CHARACTER SET utf8mb3 */ /*!80016 DEFAULT ENCRYPTION='N' */;
-USE `qualtrics-messenger`;
+CREATE DATABASE  IF NOT EXISTS `insms` /*!40100 DEFAULT CHARACTER SET utf8mb3 */ /*!80016 DEFAULT ENCRYPTION='N' */;
+USE `insms`;
 -- MySQL dump 10.13  Distrib 8.0.31, for Win64 (x86_64)
 --
--- Host: temp-up.cs9oloyccr7u.us-east-1.rds.amazonaws.com    Database: qualtrics-messenger
+-- Host: temp-up.cs9oloyccr7u.us-east-1.rds.amazonaws.com    Database: insms
 -- ------------------------------------------------------
 -- Server version	8.0.33
 

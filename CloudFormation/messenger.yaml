@@ -2,9 +2,23 @@ Parameters:
   BucketName:
     Type: String
     Description: Name for the S3 bucket - this should be a unique name as it will fail to create if the bucket exists by any user in AWS.
-  DBPassword:
+    AllowedPattern: "[a-zA-Z0-9-]+"
+  QualtricsToken:
     Type: String
-    NoEcho: true  # Mask the input in the CloudFormation console
+    Description: API Token to access Qualitrics programmatically
+    NoEcho: true
+  QualtricsPoolId:
+    Type: String
+    Description: The ID for the Qualitrics pool
+  QualtricsPoolId:
+    Type: String
+    Description: The ID for the Qualtrics directory
+  QualtricsCustomerName:
+    Type: String
+    Description: The first portion of your qualtrics address. (i.e. if you use "examplecompany.qualtrics.com", your customer name would be examplecompany)
+  PinPointNumber:
+    Type: String
+    Description: The number provided when setting up PinPoint
 
 Resources:
   MyS3Bucket:
@@ -69,6 +83,16 @@ Resources:
                   - s3:PutObject
                 Resource: 
                   - !Sub "arn:aws:s3:::${BucketName}/*" # Replace with your bucket ARN
+        - PolicyName: ReadSecretsManager
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: 
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${DBPassword}"        
+                  - !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${APIToken}"
   MyVPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -201,12 +225,30 @@ Resources:
     Properties:
       AllocatedStorage: '20'
       DBInstanceClass: 'db.t3.micro'
+      DBName: "insms"
       Engine: MySQL
-      MasterUsername: 'admin'
-      MasterUserPassword: !Ref DBPassword
+      MasterUsername: "admin"
+      MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref DBPassword, ':SecretString:password}}' ]]
       DBSubnetGroupName: !Ref MyRDSSubnetGroup
       VPCSecurityGroups:
         - !Ref RDSSecurityGroup
+
+  DBPassword:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: "insms_db_password"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "admin"}'
+        GenerateStringKey: "password"
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\'
+
+  APIToken:
+    Type: "AWS::SecretsManager::Secret"
+    Properties:
+      Name: "api_token"
+      SecretString: !Ref QualtricsToken
+      Description: "Stored API Token"
 
   MyLambdaFunction:
     Type: AWS::Lambda::Function
@@ -216,7 +258,7 @@ Resources:
           def handler(event, context):
             pass
       FunctionName: qm_lambda
-      Handler: index.handler
+      Handler: lambda_function.lambda_handler
       Role: !GetAtt MyLambdaRole.Arn
       Runtime: python3.11
       VpcConfig:
@@ -225,3 +267,19 @@ Resources:
         SubnetIds:
           - !Ref PrivateSubnet1
           - !Ref PrivateSubnet2
+      Environment:
+        Variables:
+          DB_HOSTNAME:
+            Fn::GetAtt: [ MyRDSInstance, Endpoint.Address ]
+          DB_PORT: "3306"
+          S3_BUCKET_NAME: !Ref MyS3Bucket
+          DB_SCHEMA: "insms"
+          DB_USER: "admin"
+          DB_SECRET_NAME: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${DBPassword}"
+          API_SECRET_NAME: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${APIToken}"
+          QUALTRICS_CUSTOMER_NAME: !Ref QualtricsCustomerName
+          ORIGINATION_NUMBER: !Ref PinPointNumber
+          DIRECTORY_ID: !Ref QualtricsDirectoryId
+          POOL_ID: !Ref QualtricsPoolId
+      Layers:
+        - arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:11
