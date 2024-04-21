@@ -9,6 +9,7 @@ import queries
 from datetime import datetime, timedelta
 import boto3
 from time import sleep
+from os import environ
 
 def lambda_handler(event, context):
     c = queries.get_connection()
@@ -69,6 +70,6 @@ def export_to_s3(c):
     for val in vals:
         csv_writer.writerow(val)
 
-    bucket = 'qm-export' # already created on S3
+    bucket = environ['S3_BUCKET_NAME']
     s3_resource = boto3.resource('s3')
     s3_resource.Object(bucket, f'export_{today.strftime("%Y_%m_%d")}.csv').put(Body=csv_buffer.getvalue())
