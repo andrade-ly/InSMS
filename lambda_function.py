@@ -12,20 +12,23 @@ from time import sleep
 from os import environ
 
 def lambda_handler(event, context):
-    c = queries.get_connection()
-    if event["action"] is None:
+    if "action" not in event.keys() is None:
         print("Action not specified")
         return
     
+    c = queries.get_connection()
+
     if event["action"] == "generate":
         for survey in event["surveys"]:
             print("Generating survey")
             
             generate_links.generate_survey_links(
+                c,
                 survey["survey_id"], 
                 survey["survey_description"], 
                 survey["mailing_list_id"], 
-                survey["expiration_date"])
+                survey["expiration_date"]
+            )
     elif event["action"] == "start_text":
         send_text.start_text(c)
     elif event["action"] == "remind_text":

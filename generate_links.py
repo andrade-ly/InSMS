@@ -8,10 +8,7 @@ import pymysql
 import queries
 from os import environ
 
-def generate_survey_links (survey_id, survey_description, mailing_list_id, expiration_date):
-    # Connect to the database
-    connection = queries.get_connection()
-
+def generate_survey_links (connection, survey_id, survey_description, mailing_list_id, expiration_date):
     print("connected to database")
     # Create client for qualtrics API
     c = Client()
@@ -28,7 +25,7 @@ def generate_survey_links (survey_id, survey_description, mailing_list_id, expir
     
     print("Inserted to db")
 
-    distribution_list = update_distribution_list(c, token, distribution_id, survey_id)
+    distribution_list = update_distribution_list(c, distribution_id, survey_id)
 
     print("Add distribution list ", distribution_list)
 
@@ -37,7 +34,7 @@ def generate_survey_links (survey_id, survey_description, mailing_list_id, expir
     print("done generating links")
 
 
-def update_distribution_list(c, token, distribution_id, survey_id):
+def update_distribution_list(c, distribution_id, survey_id):
     response = c.get_contact_survey_links(distribution_id, survey_id)
 
     survey_list = []

@@ -111,7 +111,7 @@ def reminder_text(reminder_list):
         destination_number = normalize_number(participant["phone_number"])
 
         if not verify_number(destination_number):
-            print(f"Unable to send - bad number {destination_number}")
+            print(f"Unable to send - bad number for {survey['participantId']}")
             participant["survey_status"] = "TextFailedToSend"
             # queries.update_survey_delivered(conn, False, survey['distributionId'], survey['participantId'])
             continue
@@ -150,7 +150,7 @@ def start_text(conn):
             destination_number = normalize_number(participant["phone"])
 
             if not verify_number(destination_number):
-                print(f"Unable to send - bad number {destination_number}")
+                print(f"Unable to send - bad number for {survey['participantId']}")
                 queries.update_survey_delivered(conn, False, survey['distributionId'], survey['participantId'])
                 continue
     
@@ -197,7 +197,7 @@ def start_text_baseline(conn, expiration_date):
 
             print (message)
             if not verify_number(destination_number):
-                print(f"Unable to send - bad number {destination_number}")
+                print(f"Unable to send - bad number for {survey['participantId']}")
                 queries.update_survey_delivered(conn, False, survey['distributionId'], survey['participantId'])
                 continue
     
@@ -258,9 +258,10 @@ def reminder_check_baseline(connection, expiration_date):
 def normalize_number(phone_number):
     normalized_number = re.sub('[ -]', '', phone_number)
     
-    matched_format = re.match(r"(1)?\d{10}$", normalized_number)
-    add_one = "1" if matched_format.groups()[0] is None else ""
-    return f"+{add_one}{normalized_number}"
+    matched_format = re.match(r"(\+)?(1)?\d{10}$", normalized_number)
+    add_plus = "+" if matched_format.groups()[0] is None else ""
+    add_one = "1" if matched_format.groups()[1] is None else ""
+    return f"{add_plus}{add_one}{normalized_number}"
     
 def verify_number(number):
     return re.match(r"^\+1\d{10}$", number) is not None
