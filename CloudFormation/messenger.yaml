@@ -16,7 +16,7 @@ Parameters:
   PinPointNumber:
     Type: String
     Description: The number provided when setting up PinPoint
-    AllowedPattern": "+1[0-9]{10}"
+    AllowedPattern: "+1[0-9]{10}"
   PinPointProjectId:
     Type: String
     Description: The ID for the PinPoint Project
