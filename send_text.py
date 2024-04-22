@@ -138,7 +138,7 @@ def start_text(conn):
 
     distribution_list = queries.get_distribution_list_by_expiration_date(conn, date.today())
 
-    print(distribution_list)
+    print(f"Sending text to {distribution_list}")
     for survey in distribution_list:
         try:
             participant = c.get_participant(survey['participantId'], directory_id)
@@ -148,13 +148,13 @@ def start_text(conn):
                 continue
         
             destination_number = normalize_number(participant["phone"])
-
+            
             if not verify_number(destination_number):
                 print(f"Unable to send - bad number for {survey['participantId']}")
                 queries.update_survey_delivered(conn, False, survey['distributionId'], survey['participantId'])
                 continue
     
-            print(f"Sending SMS message for {survey['participantId']}")
+            print(f"Sending SMS message to {survey['participantId']}")
             message_id = send_sms_message(
                 boto3.client('pinpoint'), app_id, origination_number, destination_number,
                 message, message_type)
@@ -194,7 +194,7 @@ def start_text_baseline(conn, expiration_date):
                 continue
         
             destination_number = normalize_number(participant["phone"])
-
+    
             print (message)
             if not verify_number(destination_number):
                 print(f"Unable to send - bad number for {survey['participantId']}")
@@ -210,7 +210,8 @@ def start_text_baseline(conn, expiration_date):
             #Update DB surveyDelivered = TRUE
             # queries.update_text_message_id(conn, message_id, survey['distributionId'], survey['participantId'])
             queries.update_survey_delivered(conn, True, survey['distributionId'], survey['participantId'])
-        except:
+        except Exception as e:
+            print(e)
             continue
 
 def reminder_check_baseline(connection, expiration_date):

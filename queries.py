@@ -1,5 +1,6 @@
 import boto3
 import pymysql as pms
+import json
 
 from datetime import datetime, timedelta
 from os import environ, getenv
@@ -25,7 +26,7 @@ def __get_db_password():
     secret_path = environ["DB_SECRET_NAME"]
 
     print(f"Getting secret from {secret_path}")
-
+    
     get_secret_value_response = sm_client.get_secret_value(SecretId=secret_path)
     
     json_response = json.loads(get_secret_value_response["SecretString"])
