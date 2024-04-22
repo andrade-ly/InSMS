@@ -5,18 +5,18 @@ Parameters:
     AllowedPattern: "[a-zA-Z0-9-]+"
   QualtricsToken:
     Type: String
-    Description: API Token to access Qualitrics programmatically
+    Description: API Token to access Qualtrics programmatically
     NoEcho: true
   QualtricsDirectoryId:
     Type: String
     Description: The ID for the Qualtrics directory - this should start with "POOL_"
   QualtricsCustomerName:
     Type: String
-    Description: The first portion of your qualtrics address. (i.e. if you use "examplecompany.qualtrics.com", your customer name would be examplecompany)
+    Description: The first portion of your Qualtrics address. (i.e. if you use "examplecompany.qualtrics.com", your customer name would be examplecompany)
   PinPointNumber:
     Type: String
     Description: The number provided when setting up PinPoint
-    AllowedPattern: "+1[0-9]{10}"
+    AllowedPattern: "\+1[0-9]{10}"
   PinPointProjectId:
     Type: String
     Description: The ID for the PinPoint Project
