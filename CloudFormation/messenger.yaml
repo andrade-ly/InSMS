@@ -7,18 +7,19 @@ Parameters:
     Type: String
     Description: API Token to access Qualitrics programmatically
     NoEcho: true
-  QualtricsPoolId:
+  QualtricsDirectoryId:
     Type: String
-    Description: The ID for the Qualitrics pool
-  QualtricsPoolId:
-    Type: String
-    Description: The ID for the Qualtrics directory
+    Description: The ID for the Qualtrics directory - this should start with "POOL_"
   QualtricsCustomerName:
     Type: String
     Description: The first portion of your qualtrics address. (i.e. if you use "examplecompany.qualtrics.com", your customer name would be examplecompany)
   PinPointNumber:
     Type: String
     Description: The number provided when setting up PinPoint
+    AllowedPattern": "+1[0-9]{10}"
+  PinPointProjectId:
+    Type: String
+    Description: The ID for the PinPoint Project
 
 Resources:
   MyS3Bucket:
@@ -280,6 +281,6 @@ Resources:
           QUALTRICS_CUSTOMER_NAME: !Ref QualtricsCustomerName
           ORIGINATION_NUMBER: !Ref PinPointNumber
           DIRECTORY_ID: !Ref QualtricsDirectoryId
-          POOL_ID: !Ref QualtricsPoolId
+          PROJECT_ID: !Ref PinPointProjectId
       Layers:
         - arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:11
