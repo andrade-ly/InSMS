@@ -9,7 +9,6 @@ import queries
 from os import environ
 
 def generate_survey_links (connection, survey_id, survey_description, mailing_list_id, expiration_date):
-    print("connected to database")
     # Create client for qualtrics API
     c = Client()
 

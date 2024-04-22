@@ -262,6 +262,7 @@ Resources:
       Handler: lambda_function.lambda_handler
       Role: !GetAtt MyLambdaRole.Arn
       Runtime: python3.11
+      Timeout: 900
       VpcConfig:
         SecurityGroupIds:
           - !Ref LambdaSecurityGroup
@@ -282,5 +283,6 @@ Resources:
           ORIGINATION_NUMBER: !Ref PinPointNumber
           DIRECTORY_ID: !Ref QualtricsDirectoryId
           PROJECT_ID: !Ref PinPointProjectId
+          TZ: "America/New_York"
       Layers:
         - arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:11
