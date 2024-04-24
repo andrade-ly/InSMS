@@ -1,0 +1,288 @@
+Parameters:
+  BucketName:
+    Type: String
+    Description: Name for the S3 bucket - this should be a unique name as it will fail to create if the bucket exists by any user in AWS.
+    AllowedPattern: "[a-zA-Z0-9-]+"
+  QualtricsToken:
+    Type: String
+    Description: API Token to access Qualtrics programmatically
+    NoEcho: true
+  QualtricsDirectoryId:
+    Type: String
+    Description: The ID for the Qualtrics directory - this should start with "POOL_"
+  QualtricsCustomerName:
+    Type: String
+    Description: The first portion of your Qualtrics address. (i.e. if you use "examplecompany.qualtrics.com", your customer name would be examplecompany)
+  PinPointNumber:
+    Type: String
+    Description: The number provided when setting up PinPoint
+    AllowedPattern: "\+1[0-9]{10}"
+  PinPointProjectId:
+    Type: String
+    Description: The ID for the PinPoint Project
+
+Resources:
+  MyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      AccessControl: Private  
+      
+  MyLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaLog
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:*:${AWS::AccountId}:*"
+        - PolicyName: LambdaVPCPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeSubnets
+                  - ec2:DeleteNetworkInterface
+                  - ec2:AssignPrivateIpAddresses
+                  - ec2:UnassignPrivateIpAddresses
+                Resource: "*"
+        - PolicyName: SendTextMessage
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - mobiletargeting:SendMessages
+                Resource: 
+                  - !Sub "arn:aws:mobiletargeting:*:${AWS::AccountId}:apps/*" # Replace with your bucket ARN
+        - PolicyName: S3ReadPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: 
+                  - !Sub "arn:aws:s3:::${BucketName}/*" # Replace with your bucket ARN
+        - PolicyName: ReadSecretsManager
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: 
+                  - !Ref DBPassword      
+                  - !Ref APIToken
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: '10.0.0.0/16'
+      InstanceTenancy: "default"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  RouteTablePublic:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+
+  RoutePublic:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+
+  SubnetARouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref PublicSubnet
+
+  EIP:
+    Type: "AWS::EC2::EIP"
+    Properties:
+      Domain: "vpc"
+  
+  Nat:
+    Type: "AWS::EC2::NatGateway"
+    Properties:
+      AllocationId: !GetAtt "EIP.AllocationId"
+      SubnetId: !Ref "PublicSubnet"
+
+  NatRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref "MyVPC"
+
+  NatRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref "Nat"
+      RouteTableId: !Ref "NatRouteTable"
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref NatRouteTable
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref NatRouteTable
+      SubnetId: !Ref PrivateSubnet2
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable internet access for Lambda function
+      VpcId: !Ref MyVPC
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0 # Allow outbound HTTPS
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable access to RDS
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !GetAtt LambdaSecurityGroup.GroupId # Allow inbound traffic from Lambda function
+
+  PublicSubnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select 
+        - 0
+        - !GetAZs 
+          Ref: 'AWS::Region'
+      VpcId: !Ref MyVPC
+      CidrBlock: "10.0.0.0/24"
+  
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select 
+        - 1
+        - !GetAZs 
+          Ref: 'AWS::Region'
+      VpcId: !Ref MyVPC
+      CidrBlock: "10.0.1.0/24"
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select 
+        - 2
+        - !GetAZs 
+          Ref: 'AWS::Region'
+      VpcId: !Ref MyVPC
+      CidrBlock: "10.0.2.0/24"
+
+  MyRDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  MyRDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: '20'
+      DBInstanceClass: 'db.t3.micro'
+      DBName: "insms"
+      Engine: MySQL
+      MasterUsername: "admin"
+      MasterUserPassword: !Join ['', ['{{resolve:secretsmanager:', !Ref DBPassword, ':SecretString:password}}' ]]
+      DBSubnetGroupName: !Ref MyRDSSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+
+  DBPassword:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: "insms_db_password"
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "admin"}'
+        GenerateStringKey: "password"
+        PasswordLength: 16
+        ExcludeCharacters: '"@/\'
+
+  APIToken:
+    Type: "AWS::SecretsManager::Secret"
+    Properties:
+      Name: "api_token"
+      SecretString: !Ref QualtricsToken
+      Description: "Stored API Token"
+
+  MyLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code: 
+        ZipFile: >
+          def handler(event, context):
+            pass
+      FunctionName: qm_lambda
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt MyLambdaRole.Arn
+      Runtime: python3.11
+      Timeout: 900
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+      Environment:
+        Variables:
+          DB_HOST:
+            Fn::GetAtt: [ MyRDSInstance, Endpoint.Address ]
+          DB_PORT: "3306"
+          S3_BUCKET_NAME: !Ref MyS3Bucket
+          DB_SCHEMA: "insms"
+          DB_USER: "admin"
+          DB_SECRET_NAME: !Ref DBPassword
+          API_SECRET_NAME: !Ref APIToken
+          QUALTRICS_CUSTOMER_NAME: !Ref QualtricsCustomerName
+          ORIGINATION_NUMBER: !Ref PinPointNumber
+          DIRECTORY_ID: !Ref QualtricsDirectoryId
+          PROJECT_ID: !Ref PinPointProjectId
+          TZ: "America/New_York"
+      Layers:
+        - arn:aws:lambda:us-east-1:177933569100:layer:AWS-Parameters-and-Secrets-Lambda-Extension:11

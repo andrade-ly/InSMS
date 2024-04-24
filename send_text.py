@@ -52,11 +52,10 @@ def send_sms_message(
         return response['MessageResponse']['Result'][destination_number]['DeliveryStatus']
 
 def reminder_check(connection):
-    token = environ["Q_TOKEN"]
     directory_id = environ["DIRECTORY_ID"]
 
     # Create client for qualtrics API
-    c = Client(api_token=token)
+    c = Client()
 
     today = date.today()
     tomorrow = today + timedelta(days=1)
@@ -112,7 +111,7 @@ def reminder_text(reminder_list):
         destination_number = normalize_number(participant["phone_number"])
 
         if not verify_number(destination_number):
-            print(f"Unable to send - bad number {destination_number}")
+            print(f"Unable to send - bad number for {survey['participantId']}")
             participant["survey_status"] = "TextFailedToSend"
             # queries.update_survey_delivered(conn, False, survey['distributionId'], survey['participantId'])
             continue
@@ -135,13 +134,11 @@ def start_text(conn):
 
     message_type = "PROMOTIONAL"
 
-    token = environ["Q_TOKEN"]
-
-    c = Client(api_token=token)
+    c = Client()
 
     distribution_list = queries.get_distribution_list_by_expiration_date(conn, date.today())
 
-    print(distribution_list)
+    print(f"Sending text to {distribution_list}")
     for survey in distribution_list:
         try:
             participant = c.get_participant(survey['participantId'], directory_id)
@@ -151,13 +148,13 @@ def start_text(conn):
                 continue
         
             destination_number = normalize_number(participant["phone"])
-
+            
             if not verify_number(destination_number):
-                print(f"Unable to send - bad number {destination_number}")
+                print(f"Unable to send - bad number for {survey['participantId']}")
                 queries.update_survey_delivered(conn, False, survey['distributionId'], survey['participantId'])
                 continue
     
-            print(f"Sending SMS message for {survey['participantId']}")
+            print(f"Sending SMS message to {survey['participantId']}")
             message_id = send_sms_message(
                 boto3.client('pinpoint'), app_id, origination_number, destination_number,
                 message, message_type)
@@ -181,9 +178,7 @@ def start_text_baseline(conn, expiration_date):
 
     message_type = "PROMOTIONAL"
 
-    token = environ["Q_TOKEN"]
-
-    c = Client(api_token=token)
+    c = Client()
 
     exp_datetime = datetime.strptime(expiration_date, '%m/%d/%Y')
 
@@ -199,10 +194,10 @@ def start_text_baseline(conn, expiration_date):
                 continue
         
             destination_number = normalize_number(participant["phone"])
-
+    
             print (message)
             if not verify_number(destination_number):
-                print(f"Unable to send - bad number {destination_number}")
+                print(f"Unable to send - bad number for {survey['participantId']}")
                 queries.update_survey_delivered(conn, False, survey['distributionId'], survey['participantId'])
                 continue
     
@@ -215,15 +210,15 @@ def start_text_baseline(conn, expiration_date):
             #Update DB surveyDelivered = TRUE
             # queries.update_text_message_id(conn, message_id, survey['distributionId'], survey['participantId'])
             queries.update_survey_delivered(conn, True, survey['distributionId'], survey['participantId'])
-        except:
+        except Exception as e:
+            print(e)
             continue
 
 def reminder_check_baseline(connection, expiration_date):
-    token = environ["Q_TOKEN"]
     directory_id = environ["DIRECTORY_ID"]
 
     # Create client for qualtrics API
-    c = Client(api_token=token)
+    c = Client()
 
     exp_datetime = datetime.strptime(expiration_date, '%m/%d/%Y')
     tomorrow = exp_datetime + timedelta(days=1)
@@ -264,9 +259,10 @@ def reminder_check_baseline(connection, expiration_date):
 def normalize_number(phone_number):
     normalized_number = re.sub('[ -]', '', phone_number)
     
-    matched_format = re.match(r"(1)?\d{10}$", normalized_number)
-    add_one = "1" if matched_format.groups()[0] is None else ""
-    return f"+{add_one}{normalized_number}"
+    matched_format = re.match(r"(\+)?(1)?\d{10}$", normalized_number)
+    add_plus = "+" if matched_format.groups()[0] is None else ""
+    add_one = "1" if matched_format.groups()[1] is None else ""
+    return f"{add_plus}{add_one}{normalized_number}"
     
 def verify_number(number):
     return re.match(r"^\+1\d{10}$", number) is not None

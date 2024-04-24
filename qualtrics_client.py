@@ -1,14 +1,37 @@
+import boto3
 import logging
 import requests
 from pprint import pprint 
+from os import environ
+import json
 
 class Client:
-    def __init__(self, api_token=None, url = "https://duke.yul1.qualtrics.com/API/v3"):
-        if api_token is None:
+    def __init__(self, api_token=None, customer_name = None):
+        
+        if api_token is None and "API_SECRET_NAME" not in environ:
             raise Exception("API Token must be set")
         
+        url = "https://{}.yul1.qualtrics.com/API/v3"
+        if customer_name is not None:
+            url = url.format(customer_name)
+        elif "QUALTRICS_CUSTOMER_NAME" in environ:
+            url = url.format(environ["QUALTRICS_CUSTOMER_NAME"])
+        else:
+            raise Exception("Must supply your customer name in either the customer_name parameter or setting the environment variable QUALTRICS_CUSTOMER_NAME")
+
         self.url = url
-        self.api_token = api_token
+        self.api_token = self.__get_api_token()
+
+    def __get_api_token(self):
+        client = boto3.client("secretsmanager")
+        secret_path = environ["API_SECRET_NAME"]
+
+        print(f"Getting secret from {secret_path}")
+        get_secret_value_response = client.get_secret_value(SecretId=secret_path)
+        
+        token = get_secret_value_response["SecretString"]
+        
+        return token
 
     def get_participant(self, contact_id, directory_id):
         if contact_id is None:

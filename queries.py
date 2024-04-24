@@ -1,16 +1,17 @@
+import boto3
 import pymysql as pms
-from datetime import datetime, timedelta
+import json
 
+from datetime import datetime, timedelta
 from os import environ, getenv
 
 def get_connection():
-    token = environ["Q_TOKEN"]
-
+    password = __get_db_password()
     print("Connecting to database ", environ["DB_SCHEMA"])
     # Connect to the database
     connection = pms.connect(host=environ["DB_HOST"],
                                 user=environ["DB_USER"],
-                                password=environ["DB_PASS"],
+                                password=password,
                                 database=environ["DB_SCHEMA"],
                                 charset='utf8mb4',
                                 cursorclass=pms.cursors.DictCursor,
@@ -19,6 +20,37 @@ def get_connection():
     print("Connected.")
 
     return connection
+
+def __get_db_password():
+    sm_client = boto3.client("secretsmanager")
+    secret_path = environ["DB_SECRET_NAME"]
+
+    print(f"Getting secret from {secret_path}")
+    
+    get_secret_value_response = sm_client.get_secret_value(SecretId=secret_path)
+    
+    json_response = json.loads(get_secret_value_response["SecretString"])
+    
+    return json_response["password"]
+
+def generate_schema_from_file(conn, file_path):
+    # Read the SQL script file
+    with open(file_path, 'r') as sql_file:
+        sql_script = sql_file.read()
+
+    # Split the script into individual SQL commands
+    sql_commands = sql_script.split(';')
+
+    # Execute each SQL command
+    cursor = conn.cursor()
+    for command in sql_commands:
+        try:
+            if command.strip():
+                cursor.execute(command)
+                print("Command executed successfully:", command)
+        except Exception as e:
+            print("Error executing command:", command)
+            print(e)
 
 def insert_distribution(conn, distribution_id, expiration_date, mailing_list, description, survey_id):
     
